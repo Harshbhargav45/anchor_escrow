@@ -29,10 +29,16 @@ describe("anchor_escrow_q4_25", () => {
   const receiveAmount = 200;
 
   before(async () => {
-    // Airdrop SOL to maker and taker
-    await provider.connection.requestAirdrop(maker, 10 * anchor.web3.LAMPORTS_PER_SOL);
-    await provider.connection.requestAirdrop(taker.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Transfer SOL from maker to taker instead of airdropping (to avoid rate limits)
+    const transferTx = new anchor.web3.Transaction().add(
+      anchor.web3.SystemProgram.transfer({
+        fromPubkey: maker,
+        toPubkey: taker.publicKey,
+        lamports: 0.5 * anchor.web3.LAMPORTS_PER_SOL,
+      })
+    );
+    await provider.sendAndConfirm(transferTx);
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Create mints (decimals=0 for simplicity)
     mintA = await createMint(provider.connection, provider.wallet.payer, maker, null, 0);
@@ -152,7 +158,7 @@ describe("anchor_escrow_q4_25", () => {
         takerAtaB: takerAtaB,
         makerAtaB: makerAtaB,
         escrow: escrowPda,
-        vault: vault,
+        escrowVault: vault,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
